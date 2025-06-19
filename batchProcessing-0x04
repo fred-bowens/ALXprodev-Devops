@@ -1,0 +1,39 @@
+pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+BASE_URL="https://pokeapi.co/api/v2/pokemon"
+
+MAX_JOBS=3
+
+fetch_pokemon() {
+  local pokemon=$1
+  local output_file="${pokemon}.json"
+
+  echo "Fetching data for $pokemon..."
+
+  http_code=$(curl -s -w "%{http_code}" "${BASE_URL}/${pokemon}" -o "$output_file")
+
+  http_code="${http_code: -3}"
+
+  if [[ "$http_code" -eq 200 ]]; then
+    echo "Successfully saved $output_file"
+  else
+    echo "Failed to fetch $pokemon (HTTP $http_code)"
+    echo "$(date): Failed to fetch $pokemon, HTTP code: $http_code" >> errors.txt
+    rm -f "$output_file"
+  fi
+}
+
+wait_for_jobs() {
+  while (( $(jobs -rp | wc -l) >= MAX_JOBS )); do
+    sleep 1
+  done
+}
+
+for pokemon in "${pokemon_list[@]}"; do
+  wait_for_jobs  # Wait if max parallel jobs reached
+  fetch_pokemon "$pokemon" &  # Run in background
+done
+
+wait
+
+echo "All Pokémon data fetched."
