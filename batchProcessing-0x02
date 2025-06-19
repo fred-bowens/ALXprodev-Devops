@@ -31,3 +31,55 @@ do
 done
 
 echo "All requests completed."
+
+pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+
+BASE_URL="https://pokeapi.co/api/v2/pokemon"
+
+DELAY_BETWEEN_REQUESTS=2
+RETRY_DELAY=3
+MAX_RETRIES=3
+
+for pokemon in "${pokemon_list[@]}"
+do
+  echo "Fetching data for $pokemon..."
+  
+  attempt=1
+  success=0
+
+  while [[ $attempt -le $MAX_RETRIES ]]; do
+    echo "Attempt $attempt for $pokemon..."
+    
+    output_file="${pokemon}.json"
+
+    response=$(curl -s -w "%{http_code}" "${BASE_URL}/${pokemon}" -o "$output_file")
+
+    
+    http_code="${response: -3}"
+
+    if [[ "$http_code" -eq 200 ]]; then
+      echo "Successfully retrieved data for $pokemon."
+      success=1
+      break  
+    else
+      echo "Attempt $attempt failed for $pokemon with HTTP code $http_code."
+      
+      rm -f "$output_file"
+      if [[ $attempt -lt $MAX_RETRIES ]]; then
+        echo "Retrying in $RETRY_DELAY seconds..."
+        sleep $RETRY_DELAY
+      fi
+    fi
+
+    ((attempt++))
+  done
+
+  if [[ $success -ne 1 ]]; then
+    echo "$(date): Failed to retrieve data for $pokemon after $MAX_RETRIES attempts. HTTP status: $http_code" >> errors.txt
+    echo "Logged failure for $pokemon."
+  fi
+
+  sleep $DELAY_BETWEEN_REQUESTS
+done
+
+echo "All requests completed."
