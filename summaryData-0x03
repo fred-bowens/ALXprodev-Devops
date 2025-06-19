@@ -1,0 +1,28 @@
+REPORT="pokemon_report.csv"
+
+echo "Name,Height,Weight" > "$REPORT"
+
+for file in *.json; do
+  
+  name=$(jq -r '.name' "$file")
+  height=$(jq -r '.height' "$file")
+  weight=$(jq -r '.weight' "$file")
+
+  echo "$name,$height,$weight" >> "$REPORT"
+done
+
+echo "CSV report generated in $REPORT"
+
+
+awk -F, '
+NR > 1 {
+  total_height += $2;
+  total_weight += $3;
+  count++;
+}
+END {
+  avg_height = total_height / count;
+  avg_weight = total_weight / count;
+  printf "Average Height: %.2f decimeters\nAverage Weight: %.2f hectograms\n", avg_height, avg_weight;
+}
+' "$REPORT"
